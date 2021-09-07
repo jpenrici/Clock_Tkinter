@@ -12,6 +12,7 @@ from PIL import Image, ImageTk
 from datetime import datetime
 from math import cos, sin, pi
 import time, _thread
+import sys
 
 # waiting time in minutes
 STANDARD = 15
@@ -31,7 +32,7 @@ class ClockTk(Frame):
         self.interval = interval
         self.start = (now.hour * 60) + now.minute
         self.stop = self.start + self.interval
-        self.alert = self.start + self.interval * 0.8    
+        self.alert = self.start + self.interval * 0.8
 
         self.running = False
         self.make()
@@ -88,7 +89,7 @@ class ClockTk(Frame):
             self.canvas.create_line(x, y, x1, y1, width=5, fill=color)
             
     def run(self):
-        self.running = True        
+        self.running = True  
         _thread.start_new_thread(self.update, tuple([]))
         print("timer activated ...")
 
@@ -102,20 +103,22 @@ class ClockTk(Frame):
         self.render()
 
 
-def main(*args):
+def main(args):
     msg = "interval = {0} [ {1} ]"
     value = STANDARD
-    status = "OK"
+    status = "Using default value."
 
-    if len(args) == 1:
-        if args[0][0:8] == "minutes=":
+    for arg in args:
+        if arg[0:8] == "minutes=":
             try:
-                value = int(args[0][8:])
+                value = int(arg[8:])
+                status = "OK!"
                 if value <= 0 or value > 60:
-                    status = str(value) + ", value out of range! Using default value."
+                    status = str(value) + ", value out of range! Using default."
                     value = STANDARD
+                break
             except:
-                status = "Invalid value! Using default value."
+                status = arg[8:] + ", invalid value! Using default value."
     print(msg.format(value, status))
     print("Use ESC to exit.")
 
@@ -126,6 +129,26 @@ def main(*args):
     app.mainloop()
 
 
+def test():
+    ## uncomment one test at a time
+
+    ## use default
+    # main([])
+    # main(["test"])
+    # main(["test", "minutes=-1", "test"])
+    # main(["minutes=-1", "test"])
+    # main(["minutes=0"])
+    # main(["minutes=61"])
+    # main(["minutes=a5"])
+    
+    ## use value
+    # main(["minutes= 5"])
+    main(["minutes=5"])
+
+
 if __name__ == '__main__':
     # Test
-    main("minutes=5")
+    # test()
+
+    # run 
+    main(sys.argv)
