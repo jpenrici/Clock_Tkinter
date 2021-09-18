@@ -14,23 +14,23 @@ from math import cos, sin, pi
 import time, _thread
 import sys
 
-# waiting time in minutes
+# Waiting time in minutes
 STANDARD = 15
 
 
 class ClockTk(Frame):
 
-    def __init__(self, master=None, interval=STANDARD):
+    def __init__(self, master=None, start="00:00:00", interval=STANDARD):
         super().__init__(master)
         self.master = master
-        self.master.title("TIMER- Press ESC to exit.")
+        self.master.title("TIMER - Press ESC to exit.")
         self.master.bind("<Escape>", lambda x : quit())
         self.path = "../images/clock.png"
         self.pack()
         
-        now = datetime.now()
+        hour, minute, second = start.split(':')
         self.interval = interval
-        self.start = (now.hour * 60) + now.minute
+        self.start = (int(hour) * 60) + int(minute)
         self.stop = self.start + self.interval
         self.alert = self.start + self.interval * 0.8
 
@@ -54,44 +54,51 @@ class ClockTk(Frame):
             self.close()
 
     def pointer(self, angle, radius):
+        # Adjust angles
         a = (angle - 90) * pi / 180.0
         x = (self.size / 2) + cos(a) * radius
         y = (self.size / 2) + sin(a) * radius
         return (x, y)
 
     def render(self):
+        # Update current time
         now = datetime.now()
         minute = now.minute
         minutes = (now.hour * 60) + minute
         hour = now.hour if now.hour <= 12 else now.hour - 12
 
-        # background - alert
-        color = "white" if minutes < self.stop else "red"
+        # Background - alert
+        color = "#C4C4C4" if minutes < self.stop else "red"
         self.canvas.create_rectangle(0,0, self.size, self.size, fill=color)
 
-        # watch image
+        # Watch image
         self.canvas.create_image(0, 0, image=self.image, anchor='nw')
 
-        # pointers
+        # Pointers
         x, y = self.pointer(minute * 6, self.size / 3)
         self.canvas.create_line(self.size / 2, self.size / 2, x, y, width=5, fill='green')
-        x, y = self.pointer(hour * 30, self.size / 4)
+        x, y = self.pointer((hour * 30) + (minute * 0.4), self.size / 4)
         self.canvas.create_line(self.size / 2, self.size / 2, x, y, width=5, fill='green')
 
-        # minute marker
+        # Minute marker
         i = 0.0
         while minutes + i < self.stop:
             i += 0.1
             a = (minute + i) * 6
             x, y = self.pointer(a, self.size / 2 - 5)
             x1, y1 = self.pointer(a, self.size / 2 - 20)
-            color = "green" if minutes + i < self.alert else "red"
+            color = '#7AFF71'
+            if minutes + i > self.start:
+                color = "#0A6D04" 
+                if minutes + i > self.alert:
+                    color = "red"
             self.canvas.create_line(x, y, x1, y1, width=5, fill=color)
             
     def run(self):
         self.running = True  
         _thread.start_new_thread(self.update, tuple([]))
-        print("timer activated ...")
+        print("Timer activated ...\n")
+        print("Use Esc to exit the application ...\n")
 
     def close(self):
         print("There is something wrong.")
@@ -103,52 +110,84 @@ class ClockTk(Frame):
         self.render()
 
 
-def main(args):
-    msg = "interval = {0} [ {1} ]"
-    value = STANDARD
-    status = "Using default value."
+def validate(args):
+    now = datetime.now() 
+    start = "EMPTY"
+    interval = 0
 
+    print("Check ...", args)
     for arg in args:
+        if arg[0:4] == "now=":
+            if start == "EMPTY":        
+                try:
+                    v = arg[4:].split(':')
+                    if len(v) == 1:
+                        v += ["00"]
+                    h = "error" if int(v[0]) < 0 or int(v[0]) > 23 else v[0]
+                    m = "error" if int(v[1]) < 0 or int(v[1]) > 59 else v[1]
+                    print("Time status [ {0}:{1}:00 ]".format(h, m))
+                    start = "{0}:{1}:00".format(int(h), int(m))
+                except:
+                    print("Time error ...")
         if arg[0:8] == "minutes=":
-            try:
-                value = int(arg[8:])
-                status = "OK!"
-                if value <= 0 or value > 60:
-                    status = str(value) + ", value out of range! Using default."
-                    value = STANDARD
-                break
-            except:
-                status = arg[8:] + ", invalid value! Using default value."
-    print(msg.format(value, status))
-    print("Use ESC to exit.")
+            if interval == 0:
+                try:
+                    v = arg[8:]
+                    print("Interval status [ {0} ]".format(v))
+                    v = "error" if int(v) <= 0 or int(v) > 60 else v
+                    interval = int(v)
+                except:
+                    print("Wrong interval value ...")
 
-    # run
+    if start == "EMPTY":
+        start = "{0}:{1}:{2}".format(now.hour, now.minute, now.second)
+        print("Current time [ {0} ]".format(start))
+    if interval == 0:
+        interval = STANDARD
+        print("Interval default [ {0} ]".format(interval))
+
+    return [start, interval]
+
+
+def main(args):
+    # Check
+    value_start, value_interval = validate(args)
+
+    # Run
     root = Tk()
-    app = ClockTk(master=root, interval=value)
+    app = ClockTk(master=root, start=value_start, interval=value_interval)
     app.run()
     app.mainloop()
 
 
 def test():
-    ## uncomment one test at a time
+    # Inputs
+    tests = [
+        [],
+        ["test"],
+        ["test", "minutes=-1", "test"],
+        ["minutes=-1"],
+        ["minutes=0"],
+        ["minutes=61"],
+        ["minutes=a5"],
+        ["minutes= 5"],
+        ["minutes=5"],
+        ["now=hour:minute"],
+        ["now=24:10", "minutes=5"],
+        ["now=10:60", "minutes=5"],
+        ["now=10:10", "minutes=5"],
+        ["now=16", "minutes=5"],
+        ["now=1", "minutes=5"]
+    ]
 
-    ## use default
-    # main([])
-    # main(["test"])
-    # main(["test", "minutes=-1", "test"])
-    # main(["minutes=-1", "test"])
-    # main(["minutes=0"])
-    # main(["minutes=61"])
-    # main(["minutes=a5"])
-    
-    ## use value
-    # main(["minutes= 5"])
-    main(["minutes=5"])
+    for i in tests:
+        validate(i)
+        print("="*80)
 
 
 if __name__ == '__main__':
     # Test
     # test()
 
-    # run 
+    # Run 
     main(sys.argv)
